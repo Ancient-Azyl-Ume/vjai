@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>identify</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #020617; color: #e2e8f0; overflow: hidden; }
+      body { display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: ui-sans-serif, system-ui, sans-serif; }
+      #n { font-size: 40vh; line-height: 1; font-weight: 800; color: #38bdf8; }
+      #r { font-size: 4vh; letter-spacing: 0.2em; opacity: 0.8; }
+    </style>
+  </head>
+  <body>
+    <div id="n">?</div>
+    <div id="r"></div>
+    <script>
+      // Opened by windows.rs identify_monitors, one per monitor, closed again after 2s.
+      var q = new URLSearchParams(location.search);
+      document.getElementById("n").textContent = q.get("i") || "0";
+      document.getElementById("r").textContent = (q.get("w") || "?") + " x " + (q.get("h") || "?");
+    </script>
+  </body>
+</html>

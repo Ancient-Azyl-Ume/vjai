@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@import "dockview-react/dist/styles/dockview.css";
+@import "@xyflow/react/dist/style.css";
+
+:root { color-scheme: dark; --accent: #22d3ee; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: #2a2a33; border-radius: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+html, body, #root { height: 100%; margin: 0; background: #0b0b0d; color: #d9d9de; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 13px; }
+body.output { background: #000; overflow: hidden; cursor: none; }
+canvas.output { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+.dockview-theme-vjai { --dv-background-color: #0b0b0d; --dv-tabs-and-actions-container-background-color: #121216; --dv-activegroup-visiblepanel-tab-background-color: #1c1c22; --dv-activegroup-visiblepanel-tab-color: #fff; --dv-inactivegroup-visiblepanel-tab-color: #8a8a94; --dv-separator-border: #26262d; --dv-group-view-background-color: #0b0b0d; --dv-paneview-header-border-color: #26262d; --dv-tabs-container-scrollbar-color: #333; }
+.tp-dfwv { position: static !important; width: 100% !important; }

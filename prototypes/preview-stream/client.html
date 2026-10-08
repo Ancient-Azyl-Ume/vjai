@@ -1,0 +1,69 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>preview stream</title>
+<style>
+  body { margin: 0; background: #0b0b0e; color: #ddd; font: 13px ui-monospace, monospace; }
+  .phone { width: 390px; margin: 0 auto; padding: 8px; }
+  img { width: 100%; display: block; background: #000; image-rendering: auto; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  td { padding: 2px 4px; border-bottom: 1px solid #222; }
+  td:last-child { text-align: right; color: #6ef; }
+  button { width: 100%; padding: 10px; margin-top: 8px; background: #223; color: #cef; border: 1px solid #445; }
+</style>
+<div class="phone">
+  <img id="v" alt="preview">
+  <button id="cmd">control action (measures command to glass)</button>
+  <table id="t"></table>
+</div>
+<script>
+  const img = document.getElementById("v"), t = document.getElementById("t");
+  const ws = new WebSocket(`ws://${location.host}/${location.search}`);
+  ws.binaryType = "arraybuffer";
+  let url = null, cmdId = 0, cmdSent = 0;
+  const arrivals = [], sizes = [], lats = [];
+  let lastGlass = 0;
+
+  document.getElementById("cmd").onclick = () => {
+    cmdId = Date.now(); cmdSent = performance.now();
+    ws.send(JSON.stringify({ t: "cmd", id: cmdId }));
+  };
+
+  ws.onmessage = (e) => {
+    const buf = new Uint8Array(e.data);
+    const hlen = new DataView(e.data).getUint32(0);
+    const head = JSON.parse(new TextDecoder().decode(buf.subarray(4, 4 + hlen)));
+    const jpeg = buf.subarray(4 + hlen);
+    // Same-machine assumption: the page clock and the server clock are the same clock,
+    // so now - head.ts is the real one-way delivery delay. Across machines this needs an offset.
+    lats.push(Date.now() - head.ts);
+    sizes.push(e.data.byteLength);
+    arrivals.push(performance.now());
+    if (arrivals.length > 120) { arrivals.shift(); sizes.shift(); lats.shift(); }
+    if (cmdId && head.cmd === cmdId) { lastGlass = performance.now() - cmdSent; cmdId = 0; }
+    const b = new Blob([jpeg], { type: "image/jpeg" });
+    const u = URL.createObjectURL(b);
+    img.src = u;
+    if (url) URL.revokeObjectURL(url);
+    url = u;
+  };
+
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / (a.length || 1);
+  const row = (k, v) => `<tr><td>${k}</td><td>${v}</td></tr>`;
+  setInterval(() => {
+    if (arrivals.length < 3) return;
+    const gaps = arrivals.slice(1).map((v, i) => v - arrivals[i]);
+    const g = mean(gaps);
+    const jit = Math.sqrt(mean(gaps.map((x) => (x - g) ** 2)));
+    const span = (arrivals.at(-1) - arrivals[0]) / 1000;
+    const kBs = sizes.reduce((a, b) => a + b, 0) / 1024 / span;
+    t.innerHTML =
+      row("fps", (1000 / g).toFixed(2)) +
+      row("frame kB", (mean(sizes) / 1024).toFixed(1)) +
+      row("bandwidth kB/s", kBs.toFixed(1)) +
+      row("latency ms", mean(lats).toFixed(1)) +
+      row("jitter ms (sd of gap)", jit.toFixed(1)) +
+      row("worst gap ms", Math.max(...gaps).toFixed(0)) +
+      row("cmd to glass ms", lastGlass ? lastGlass.toFixed(0) : "-");
+  }, 500);
+</script>

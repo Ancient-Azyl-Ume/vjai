@@ -1,0 +1,87 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>audio-host signals</title>
+<style>
+  body { margin: 0; background: #0b0d10; color: #cfd6df; font: 13px ui-monospace, monospace; }
+  header { padding: 10px 14px; display: flex; gap: 18px; align-items: baseline; }
+  #status { color: #f66; }
+  #status.ok { color: #6f6; }
+  canvas { display: block; width: 100%; height: 320px; }
+  #nums { padding: 8px 14px; white-space: pre; }
+</style>
+<header>
+  <b>audio-host</b>
+  <span id="status">connecting</span>
+  <span id="dev"></span>
+</header>
+<canvas id="c" width="1200" height="320"></canvas>
+<div id="nums"></div>
+<script>
+  const LINES = [
+    ["rms", "#8ab4ff"],
+    ["bass", "#ff7a59"],
+    ["mid", "#ffd166"],
+    ["high", "#6ee7b7"],
+    ["kick", "#ff3b6b"],
+  ];
+  const N = 600;
+  const hist = Object.fromEntries(LINES.map(([k]) => [k, new Float32Array(N)]));
+  let head = 0;
+  let last = null;
+
+  const c = document.getElementById("c");
+  const g = c.getContext("2d");
+  const status = document.getElementById("status");
+
+  function connect() {
+    const ws = new WebSocket("ws://127.0.0.1:4821");
+    ws.onopen = () => { status.textContent = "connected"; status.className = "ok"; };
+    ws.onclose = () => { status.textContent = "disconnected, retrying"; status.className = ""; setTimeout(connect, 1000); };
+    ws.onmessage = (e) => {
+      const f = JSON.parse(e.data);
+      last = f;
+      for (const [k] of LINES) hist[k][head] = f[k];
+      head = (head + 1) % N;
+    };
+  }
+  connect();
+
+  function draw() {
+    const w = (c.width = c.clientWidth * devicePixelRatio);
+    const h = (c.height = 320 * devicePixelRatio);
+    g.fillStyle = "#0b0d10";
+    g.fillRect(0, 0, w, h);
+
+    // beat phase marker
+    if (last && last.bpm > 0) {
+      g.fillStyle = "rgba(255,255,255," + (0.06 + 0.14 * (1 - last.phase)) + ")";
+      g.fillRect(0, 0, w, h);
+    }
+
+    g.lineWidth = 2 * devicePixelRatio;
+    LINES.forEach(([k, color], i) => {
+      g.strokeStyle = color;
+      g.beginPath();
+      for (let x = 0; x < N; x++) {
+        const v = hist[k][(head + x) % N];
+        const px = (x / (N - 1)) * w;
+        const py = h - 8 - v * (h - 16);
+        x === 0 ? g.moveTo(px, py) : g.lineTo(px, py);
+      }
+      g.stroke();
+      g.fillStyle = color;
+      g.fillText(k, 8 * devicePixelRatio, (14 + i * 14) * devicePixelRatio);
+    });
+
+    if (last) {
+      document.getElementById("dev").textContent =
+        last.device + (last.audioOk ? "" : "  [NO AUDIO]");
+      document.getElementById("nums").textContent =
+        `rms ${last.rms.toFixed(3)}  bass ${last.bass.toFixed(3)}  mid ${last.mid.toFixed(3)}  high ${last.high.toFixed(3)}  kick ${last.kick.toFixed(2)}\n` +
+        `bpm ${last.bpm.toFixed(1)}  confidence ${last.confidence.toFixed(2)}  phase ${last.phase.toFixed(2)}\n` +
+        `input latency ${last.inputLatencyMs.toFixed(1)} ms  buffer age ${last.bufferAgeMs.toFixed(1)} ms  sr ${last.sr}`;
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+</script>

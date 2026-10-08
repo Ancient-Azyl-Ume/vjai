@@ -1,0 +1,12 @@
+{
+  "name": "vjai-sidecar",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "stdio MCP server that bridges Claude Code to a running vjai window",
+  "bin": { "vjai-mcp": "mcp.js" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "ws": "^8.18.3"
+  }
+}
